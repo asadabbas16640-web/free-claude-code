@@ -1,0 +1,9 @@
+# JARVIS hosted FCC adapter
+
+This optional deployment wraps FCC with a fixed authenticated bridge. It exposes only ChatGPT device login/status/cancel/disconnect, connected model discovery and text inference. It does not expose FCC Admin, code sessions, terminal, filesystem, messaging, custom providers, paid API routes, or settings mutations. The original local-admin restriction remains intact; after strong bridge authentication a fixed in-process request is delegated to that local boundary. No arbitrary URL or HTTP proxy is accepted.
+
+Deploy `jarvis_hosted/Dockerfile` with root build context, free Render web service, Singapore and automatic deployment off. Generate `JARVIS_BRIDGE_TOKEN` with at least40 random characters and store it only in Render and the private JARVIS Site's secret environment. The Site uses server-to-server transport; browsers never receive this token. Connect ChatGPT from the private Site's AI Models panel; this uses the owner's subscription and quotas, not free OpenAI API credits. The existing OpenRouter route remains unchanged until an authenticated model is tested and explicitly selected.
+
+**Storage limit:** free Render local storage is ephemeral. FCC credentials remain private runtime files; no token export endpoint exists. Restart, sleep recovery or redeploy can require sign-in again. The bridge reports a per-instance/session revision so the Site invalidates old tests. This release does not provide durable hosted credential backup or a continuously running coding worker.
+
+Health200 means the process started, not model authentication. Verify unauthenticated401, blocked admin/code endpoints, real device login, advertised models and an actual synthetic response before claiming a working model connection. Preserve the upstream AGPL licence and source availability.

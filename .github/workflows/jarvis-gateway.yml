@@ -1,0 +1,34 @@
+name: JARVIS FCC gateway checks
+on:
+  pull_request:
+    paths: ["jarvis_hosted/**", "tests/jarvis_hosted/**", ".github/workflows/jarvis-gateway.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gateway:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify isolated gateway security boundary
+        run: python -m unittest discover -s tests/jarvis_hosted -v
+      - name: Build FCC hosted adapter
+        run: docker build -f jarvis_hosted/Dockerfile -t fcc-gateway-test .
+      - name: Verify real gateway process and authentication
+        run: |
+          docker run -d --name gateway -p 10000:10000 -e JARVIS_BRIDGE_TOKEN=synthetic-ci-only-token-not-a-user-secret-000000000 fcc-gateway-test
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://localhost:10000/health; then break; fi
+            sleep 3
+          done
+          curl -fsS http://localhost:10000/health
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:10000/bridge/status)" = "401"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer synthetic-ci-only-token-not-a-user-secret-000000000' http://localhost:10000/admin)" = "404"
+          curl -fsS -H 'Authorization: Bearer synthetic-ci-only-token-not-a-user-secret-000000000' http://localhost:10000/bridge/status
+      - name: Show bounded diagnostic logs on failure
+        if: failure()
+        run: docker logs --tail 60 gateway || true
